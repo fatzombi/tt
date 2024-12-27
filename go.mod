@@ -1,4 +1,4 @@
-module tt
+module github.com/fatzombi/tt
 
 go 1.23.4
 
