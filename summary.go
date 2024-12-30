@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -28,11 +29,19 @@ func printDailySummary() {
 		return
 	}
 
+	// Get tasks and sort them
+	var tasks []string
+	for task := range taskDurations {
+		tasks = append(tasks, task)
+	}
+	sort.Strings(tasks)
+
 	fmt.Println("\nToday's Work Summary:")
 	fmt.Println("--------------------")
 
 	var totalDuration time.Duration
-	for task, duration := range taskDurations {
+	for _, task := range tasks {
+		duration := taskDurations[task]
 		fmt.Printf("%-20s: %s\n", task, duration.Round(time.Second))
 		totalDuration += duration
 	}
