@@ -24,6 +24,8 @@ type model struct {
 	progress   progress.Model
 	width      int
 	shouldSave bool
+	isPaused   bool
+	pauseTime  time.Time
 }
 
 func initialModel(task string, duration time.Duration) model {
@@ -34,6 +36,7 @@ func initialModel(task string, duration time.Duration) model {
 		startTime:  time.Now(),
 		progress:   p,
 		shouldSave: true,
+		isPaused:   false,
 	}
 }
 
@@ -57,9 +60,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if msg.Type == tea.KeyCtrlC {
+		switch msg.Type {
+		case tea.KeyCtrlC:
 			if m.shouldSave {
 				actualDuration := time.Since(m.startTime)
+				if m.isPaused {
+					actualDuration = m.pauseTime.Sub(m.startTime)
+				}
 				saveSession(m.task, actualDuration, m.startTime)
 				fmt.Printf("\nSaved partial session: %s (%.2f seconds)\n",
 					m.task,
@@ -67,19 +74,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 			}
 			return m, tea.Quit
+
+		default:
+			// Handle 'p' key press
+			if msg.String() == "p" || msg.String() == "P" {
+				if m.isPaused {
+					// Resume
+					pauseDuration := time.Since(m.pauseTime)
+					m.startTime = m.startTime.Add(pauseDuration)
+					m.isPaused = false
+					return m, tick()
+				} else {
+					// Pause
+					m.isPaused = true
+					m.pauseTime = time.Now()
+					return m, nil
+				}
+			}
 		}
 
 	case tickMsg:
-		m.elapsed = time.Since(m.startTime)
-		if m.elapsed >= m.duration {
-			if m.shouldSave {
-				saveSession(m.task, m.duration, m.startTime)
-				m.shouldSave = false
-				notify(m.task)
+		if !m.isPaused {
+			m.elapsed = time.Since(m.startTime)
+			if m.elapsed >= m.duration {
+				if m.shouldSave {
+					saveSession(m.task, m.duration, m.startTime)
+					m.shouldSave = false
+					notify(m.task)
+				}
+				return m, tea.Quit
 			}
-			return m, tea.Quit
+			return m, tick()
 		}
-		return m, tick()
 	}
 
 	return m, nil
@@ -89,10 +115,16 @@ func (m model) View() string {
 	percent := float64(m.elapsed) / float64(m.duration)
 	remainingTime := m.duration - m.elapsed
 
+	status := "remaining"
+	if m.isPaused {
+		status = "PAUSED"
+	}
+
 	return fmt.Sprintf(
-		"\n  %s: %s remaining\n\n%s\n",
+		"\n  %s: %s %s\n\n%s\n\n  Press 'p' to pause/resume\n",
 		m.task,
 		remainingTime.Round(time.Second),
+		status,
 		m.progress.ViewAs(percent),
 	)
 }
