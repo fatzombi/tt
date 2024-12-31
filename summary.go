@@ -13,12 +13,21 @@ func printDailySummary() {
 		return
 	}
 
-	today := time.Now().Truncate(24 * time.Hour)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	var todaySessions []WorkSession
 	taskDurations := make(map[string]time.Duration)
 
 	for _, session := range sessions {
-		if session.StartTime.Truncate(24 * time.Hour).Equal(today) {
+		sessionDay := time.Date(
+			session.StartTime.Year(),
+			session.StartTime.Month(),
+			session.StartTime.Day(),
+			0, 0, 0, 0,
+			session.StartTime.Location(),
+		)
+
+		if sessionDay.Equal(today) {
 			todaySessions = append(todaySessions, session)
 			taskDurations[session.Task] += session.Duration
 		}
