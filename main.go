@@ -143,7 +143,20 @@ func main() {
 
 	// Handle summary command first
 	if len(os.Args) > 1 && os.Args[1] == "summary" {
-		printDailySummary()
+		if len(os.Args) > 2 {
+			// Parse the provided date
+			targetDate, err := parseDate(os.Args[2])
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				os.Exit(1)
+			}
+			printDailySummary(targetDate)
+		} else {
+			// Use today's date if no date provided
+			now := time.Now()
+			today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+			printDailySummary(today)
+		}
 		return
 	}
 
